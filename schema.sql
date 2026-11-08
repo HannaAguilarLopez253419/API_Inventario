@@ -13,18 +13,18 @@ CREATE TABLE IF NOT EXISTS usuarios (
 
 CREATE TABLE IF NOT EXISTS productos (
   id            INT AUTO_INCREMENT PRIMARY KEY,
+  usuario_id    INT NOT NULL,
   nombre        VARCHAR(120) NOT NULL,
-  codigo        VARCHAR(50)  NOT NULL UNIQUE,
+  codigo        VARCHAR(50)  NOT NULL,
   precio        DECIMAL(10,2) NOT NULL,
   existencias   INT NOT NULL DEFAULT 0,
   categoria     VARCHAR(80) NULL,
   fecha_ingreso DATE NOT NULL,
+  CONSTRAINT fk_productos_usuario FOREIGN KEY (usuario_id)
+    REFERENCES usuarios(id) ON DELETE CASCADE,
+  CONSTRAINT uq_usuario_codigo UNIQUE (usuario_id, codigo),
   CONSTRAINT chk_precio CHECK (precio >= 0),
   CONSTRAINT chk_existencias CHECK (existencias >= 0)
 );
 
--- Datos de ejemplo (opcional, para probar la lista)
-INSERT INTO productos (nombre, codigo, precio, existencias, categoria, fecha_ingreso) VALUES
-  ('Cuaderno profesional rayado', 'CUA-001', 45.50, 24, 'Cuadernos', '2026-10-15'),
-  ('Lápiz HB', 'LAP-001', 5.00, 100, 'Escritura', '2026-10-20'),
-  ('Pegamento en barra', 'PEG-001', 18.00, 2, 'Manualidades', '2026-11-01');
+

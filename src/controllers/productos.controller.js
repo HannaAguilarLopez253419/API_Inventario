@@ -62,18 +62,33 @@ function leerId(req, res) {
   return id;
 }
 
+// Si el usuario del token ya no existe, la sesión no sirve
+function sesionInvalida(res) {
+  return res.status(401).json({ mensaje: 'La sesión ya no es válida. Inicia sesión de nuevo' });
+}
+
 async function listar(req, res) {
+  const usuarioId = req.usuario.id;
   const buscar = String(req.query.buscar ?? '').trim();
   const [filas] = buscar
-    ? await pool.query('SELECT * FROM productos WHERE nombre LIKE ? ORDER BY id DESC', [`%${buscar}%`])
-    : await pool.query('SELECT * FROM productos ORDER BY id DESC');
+    ? await pool.query(
+        'SELECT * FROM productos WHERE usuario_id = ? AND nombre LIKE ? ORDER BY id DESC',
+        [usuarioId, `%${buscar}%`]
+      )
+    : await pool.query(
+        'SELECT * FROM productos WHERE usuario_id = ? ORDER BY id DESC',
+        [usuarioId]
+      );
   res.json(filas.map(aProducto));
 }
 
 async function obtener(req, res) {
   const id = leerId(req, res);
   if (id === null) return;
-  const [filas] = await pool.query('SELECT * FROM productos WHERE id = ?', [id]);
+  const [filas] = await pool.query(
+    'SELECT * FROM productos WHERE id = ? AND usuario_id = ?',
+    [id, req.usuario.id]
+  );
   if (!filas.length) return res.status(404).json({ mensaje: 'Producto no encontrado' });
   res.json(aProducto(filas[0]));
 }
@@ -84,16 +99,17 @@ async function crear(req, res) {
 
   try {
     const [r] = await pool.query(
-      `INSERT INTO productos (nombre, codigo, precio, existencias, categoria, fecha_ingreso)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [datos.nombre, datos.codigo, datos.precio, datos.existencias, datos.categoria, datos.fechaIngreso]
+      `INSERT INTO productos (usuario_id, nombre, codigo, precio, existencias, categoria, fecha_ingreso)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.usuario.id, datos.nombre, datos.codigo, datos.precio, datos.existencias, datos.categoria, datos.fechaIngreso]
     );
     const [filas] = await pool.query('SELECT * FROM productos WHERE id = ?', [r.insertId]);
     res.status(201).json(aProducto(filas[0]));
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ mensaje: 'Ya existe un producto con ese código' });
+      return res.status(409).json({ mensaje: 'Ya existe un producto con ese código en tu inventario' });
     }
+    if (e.code === 'ER_NO_REFERENCED_ROW_2') return sesionInvalida(res);
     throw e;
   }
 }
@@ -109,15 +125,15 @@ async function actualizar(req, res) {
     const [r] = await pool.query(
       `UPDATE productos
           SET nombre = ?, codigo = ?, precio = ?, existencias = ?, categoria = ?, fecha_ingreso = ?
-        WHERE id = ?`,
-      [datos.nombre, datos.codigo, datos.precio, datos.existencias, datos.categoria, datos.fechaIngreso, id]
+        WHERE id = ? AND usuario_id = ?`,
+      [datos.nombre, datos.codigo, datos.precio, datos.existencias, datos.categoria, datos.fechaIngreso, id, req.usuario.id]
     );
     if (r.affectedRows === 0) return res.status(404).json({ mensaje: 'Producto no encontrado' });
     const [filas] = await pool.query('SELECT * FROM productos WHERE id = ?', [id]);
     res.json(aProducto(filas[0]));
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ mensaje: 'Ya existe un producto con ese código' });
+      return res.status(409).json({ mensaje: 'Ya existe un producto con ese código en tu inventario' });
     }
     throw e;
   }
@@ -126,9 +142,10 @@ async function actualizar(req, res) {
 async function eliminar(req, res) {
   const id = leerId(req, res);
   if (id === null) return;
-  const [r] = await pool.query('DELETE FROM productos WHERE id = ?', [id]);
+  const [r] = await pool.query(
+    'DELETE FROM productos WHERE id = ? AND usuario_id = ?',
+    [id, req.usuario.id]
+  );
   if (r.affectedRows === 0) return res.status(404).json({ mensaje: 'Producto no encontrado' });
   res.status(204).end();
 }
-
-module.exports = { listar, obtener, crear, actualizar, eliminar };

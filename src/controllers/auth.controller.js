@@ -4,11 +4,30 @@ const pool = require('../config/db');
 
 const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// true: cada usuario nuevo recibe 3 productos de ejemplo. false: empieza con la lista vacía.
+const CREAR_EJEMPLOS = true;
+
+const EJEMPLOS = [
+  ['Cuaderno profesional rayado', 'CUA-001', 45.5, 24, 'Cuadernos'],
+  ['Lápiz HB', 'LAP-001', 5, 100, 'Escritura'],
+  ['Pegamento en barra', 'PEG-001', 18, 2, 'Manualidades'],
+];
+
 function firmarToken(usuario) {
   return jwt.sign(
     { id: usuario.id, correo: usuario.correo },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES || '7d' }
+  );
+}
+
+// Inserta los productos de ejemplo del usuario recién creado
+async function crearEjemplos(usuarioId) {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const filas = EJEMPLOS.map((e) => [usuarioId, ...e, hoy]);
+  await pool.query(
+    'INSERT INTO productos (usuario_id, nombre, codigo, precio, existencias, categoria, fecha_ingreso) VALUES ?',
+    [filas]
   );
 }
 
@@ -32,6 +51,15 @@ async function register(req, res) {
     'INSERT INTO usuarios (nombre, correo, password_hash) VALUES (?, ?, ?)',
     [nombreLimpio, correoNorm, hash]
   );
+
+  // Si fallan los ejemplos, el registro igual se completa
+  if (CREAR_EJEMPLOS) {
+    try {
+      await crearEjemplos(r.insertId);
+    } catch (e) {
+      console.error('No se pudieron crear los productos de ejemplo:', e.message);
+    }
+  }
 
   const usuario = { id: r.insertId, nombre: nombreLimpio, correo: correoNorm };
   res.status(201).json({ token: firmarToken(usuario), usuario });

@@ -149,3 +149,4 @@ async function eliminar(req, res) {
   if (r.affectedRows === 0) return res.status(404).json({ mensaje: 'Producto no encontrado' });
   res.status(204).end();
 }
+module.exports = { listar, obtener, crear, actualizar, eliminar };

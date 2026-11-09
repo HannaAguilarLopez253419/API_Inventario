@@ -4,7 +4,6 @@ const pool = require('../config/db');
 
 const CORREO_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// true: cada usuario nuevo recibe 3 productos de ejemplo. false: empieza con la lista vacía.
 const CREAR_EJEMPLOS = true;
 
 const EJEMPLOS = [
@@ -21,7 +20,6 @@ function firmarToken(usuario) {
   );
 }
 
-// Inserta los productos de ejemplo del usuario recién creado
 async function crearEjemplos(usuarioId) {
   const hoy = new Date().toISOString().slice(0, 10);
   const filas = EJEMPLOS.map((e) => [usuarioId, ...e, hoy]);
@@ -52,7 +50,6 @@ async function register(req, res) {
     [nombreLimpio, correoNorm, hash]
   );
 
-  // Si fallan los ejemplos, el registro igual se completa
   if (CREAR_EJEMPLOS) {
     try {
       await crearEjemplos(r.insertId);
@@ -78,7 +75,7 @@ async function login(req, res) {
     [correoNorm]
   );
 
-  // Mismo mensaje si falla el correo o la contraseña, para no revelar qué correos existen
+  
   const fila = filas[0];
   const valido = fila && (await bcrypt.compare(String(password), fila.password_hash));
   if (!valido) return res.status(401).json({ mensaje: 'Correo o contraseña incorrectos' });

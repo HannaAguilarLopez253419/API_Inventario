@@ -1,4 +1,3 @@
--- Ejecuta este archivo completo en MySQL Workbench (rayo ⚡)
 CREATE DATABASE IF NOT EXISTS inventario_papeleria
   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE inventario_papeleria;

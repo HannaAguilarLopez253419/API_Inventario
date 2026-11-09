@@ -2,14 +2,12 @@ const pool = require('../config/db');
 
 const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
-// Acepta solo fechas reales (rechaza, por ejemplo, 2026-02-31)
 function fechaValida(texto) {
   if (!FECHA_REGEX.test(texto)) return false;
   const d = new Date(`${texto}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === texto;
 }
 
-// Fila de MySQL (snake_case) -> JSON de la API (camelCase)
 function aProducto(f) {
   return {
     id: f.id,
@@ -62,7 +60,6 @@ function leerId(req, res) {
   return id;
 }
 
-// Si el usuario del token ya no existe, la sesión no sirve
 function sesionInvalida(res) {
   return res.status(401).json({ mensaje: 'La sesión ya no es válida. Inicia sesión de nuevo' });
 }

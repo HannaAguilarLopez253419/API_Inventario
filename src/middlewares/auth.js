@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 
-// Revisa el encabezado Authorization: Bearer <token>
+
 function autenticar(req, res, next) {
   const [tipo, token] = (req.headers.authorization || '').split(' ');
   if (tipo !== 'Bearer' || !token) {
